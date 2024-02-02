@@ -196,9 +196,9 @@ def regex_options(parser):
     parser.add_argument("--topk_use_map",
                         dest="topk_use_only_likelihood",
                         action="store_false")
-    parser.add_argument("--debug",
-                        dest="debug",
-                        action="store_true")
+    # parser.add_argument("--debug",
+    #                     dest="debug",
+    #                     action="store_true")
     parser.add_argument("--ll_cutoff",
                         dest="use_ll_cutoff",
                         nargs='*',
@@ -358,7 +358,7 @@ def main(args):
 
     #eprint(baseGrammar)
     #explore
-    test_stuff = args.pop("debug")
+    test_stuff = False
     if test_stuff:
         eprint(baseGrammar)
         eprint("sampled programs from prior:")

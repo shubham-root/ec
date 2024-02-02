@@ -77,6 +77,8 @@ class GrammarNetwork(nn.Module):
                        continuationType=self.grammar.continuationType)
 
     def batchedLogLikelihoods(self, xs, summaries):
+        # print("🚀 ~ xs:", xs.size(0))
+        # print("🚀 ~ summaries:", len(summaries))
         """Takes as input BxinputDimensionality vector & B likelihood summaries;
         returns B-dimensional vector containing log likelihood of each summary"""
         use_cuda = xs.device.type == 'cuda'
@@ -796,6 +798,7 @@ class RecognitionModel(nn.Module):
                 features += [language_features]
         if len(features) < 1: return None
         concatenated = torch.cat(features)
+        # print("Out", concatenated)
         return concatenated
 
     def forward(self, features):
@@ -894,6 +897,8 @@ class RecognitionModel(nn.Module):
                 for task in tasks}
 
     def frontierKL(self, frontier, auxiliary=False, vectorized=True):
+        import copy
+        # print("🚀 ~ frontier:", frontier)
         features = self.encode_features(frontier.task)
         if features is None: return None, None
         # Monte Carlo estimate: draw a sample from the frontier
@@ -905,8 +910,12 @@ class RecognitionModel(nn.Module):
             g = self(features)
             return - entry.program.logLikelihood(g), al
         else:
-            features = self._MLP(features).expand(1, features.size(-1))
-            ll = self.grammarBuilder.batchedLogLikelihoods(features, [entry.program]).view(-1)
+            # print("🚀 ~ features.shape:", features.shape)
+            # print("🚀 ~ self._MLP(features).shape:", self._MLP(features).shape)
+            f1 = self._MLP(features)
+            f2 = f1.expand(1, f1.size(-1))
+            # features = self._MLP(features).expand(1, features.size(-1))
+            ll = self.grammarBuilder.batchedLogLikelihoods(f2, [entry.program]).view(-1)
             return -ll, al
             
 
