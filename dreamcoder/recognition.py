@@ -1228,7 +1228,11 @@ class RecognitionModel(nn.Module):
                 dreaming = random.random() < helmholtzRatio
                 if dreaming: 
                     frontier = getHelmholtz()
+                    eprint("🚀 ~ dreamt up frontier", frontier.json())
+                    
                 self.zero_grad()
+                eprint("Data going in for forward pass")
+                eprint(frontier.json())
                 loss, classificationLoss = \
                         self.frontierBiasOptimal(frontier, auxiliary=auxLoss, vectorized=vectorized) if biasOptimal \
                         else self.frontierKL(frontier, auxiliary=auxLoss, vectorized=vectorized)

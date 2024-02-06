@@ -118,8 +118,8 @@ class ConstantFunction:
     def __call__(self,*a,**k): return self.v
 
 def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
-    flushEverything()
+    print(*args, **kwargs, flush=True)
+    # flushEverything()
 
 
 class Bunch(object):

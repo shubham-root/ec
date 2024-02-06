@@ -556,9 +556,7 @@ def main(args):
     om_original_ordering = args.pop("om_original_ordering")
     sample_n_supervised = args.pop("sample_n_supervised")
     task_dataset = args.pop("taskDataset")
-    print("🚀 ~ task_dataset:", task_dataset)
     task_dataset_dir=args.pop("taskDatasetDir")
-    print("🚀 ~ task_dataset_dir:", task_dataset_dir)
     if task_dataset:
         train, test = loadLogoDataset(task_dataset=task_dataset, task_dataset_dir=task_dataset_dir,
         om_original_ordering=om_original_ordering)
@@ -567,8 +565,7 @@ def main(args):
             eprint(f"Sampling n={sample_n_supervised} supervised tasks.")
             train = sampleSupervised(train, sample_n_supervised)    
     else: 
-        print("WE GENERATING TASKS OF OUR ASSES")
-        print("🚀 ~ target:", target)
+        print("WE GENERATING TASKS HERE")
         tasks = makeTasks(target, proto)
         os.makedirs("./temps/", exist_ok=True)
         import imageio

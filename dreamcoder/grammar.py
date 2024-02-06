@@ -40,7 +40,10 @@ class Grammar(object):
             str(p) : p
             for p in [p for (_, _, p) in sorted(productions, key=lambda prod: str(prod[-1]))]
         } 
-        self.escaped_vocab, self.original_to_escaped, self.escaped_to_primitive_counts = self.build_escaped_vocab(self.vocab)        
+        self.escaped_vocab, self.original_to_escaped, self.escaped_to_primitive_counts = self.build_escaped_vocab(self.vocab)
+        
+    def __repr__(self):
+        return f"productions: {self.productions},\nlogVariable: {self.logVariable}\nstr_to_production: {self.str_to_production}"   
         
     def build_escaped_vocab(self, vocab):
         escaped_vocab =  {
@@ -785,7 +788,7 @@ class Grammar(object):
                        [ (l.data.tolist()[0], t, p)
                          for l, t, p in self.productions],
                        continuationType=self.continuationType)
-
+           
 class LikelihoodSummary(object):
     '''Summarizes the terms that will be used in a likelihood calculation'''
 

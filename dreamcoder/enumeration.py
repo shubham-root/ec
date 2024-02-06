@@ -29,9 +29,11 @@ def multicoreEnumeration(g, tasks, _=None,
      # everything that gets sent between processes will be dilled
     import dill
 
-    solvers = {"ocaml": solveForTask_ocaml,   
-               "pypy": solveForTask_pypy,   
-               "python": solveForTask_python}   
+    solvers = {
+        "ocaml": solveForTask_ocaml,   
+        "pypy": solveForTask_pypy,   
+        "python": solveForTask_python
+               }   
     assert solver in solvers, "You must specify a valid solver. options are ocaml, pypy, or python." 
 
     likelihoodModel = None
@@ -44,7 +46,6 @@ def multicoreEnumeration(g, tasks, _=None,
     if not isinstance(g, dict):
         g = {t: g for t in tasks}
     task2grammar = g
-    print("🚀 ~ task2grammar:", task2grammar)
 
     # If we are not evaluating on held out testing tasks:
     # Bin the tasks by request type and grammar
