@@ -22,6 +22,7 @@ from dreamcoder.recognition import variable, maybe_cuda
 from dreamcoder.task import Task
 from dreamcoder.type import arrow
 from dreamcoder.utilities import eprint, testTrainSplit, loadPickle
+from PIL import Image
 
 def saveVisualizedTasks(tasks, visualizeTasks):
     # Store the high resolution tasks.
@@ -555,7 +556,9 @@ def main(args):
     om_original_ordering = args.pop("om_original_ordering")
     sample_n_supervised = args.pop("sample_n_supervised")
     task_dataset = args.pop("taskDataset")
+    print("🚀 ~ task_dataset:", task_dataset)
     task_dataset_dir=args.pop("taskDatasetDir")
+    print("🚀 ~ task_dataset_dir:", task_dataset_dir)
     if task_dataset:
         train, test = loadLogoDataset(task_dataset=task_dataset, task_dataset_dir=task_dataset_dir,
         om_original_ordering=om_original_ordering)
@@ -564,7 +567,29 @@ def main(args):
             eprint(f"Sampling n={sample_n_supervised} supervised tasks.")
             train = sampleSupervised(train, sample_n_supervised)    
     else: 
+        print("WE GENERATING TASKS OF OUR ASSES")
+        print("🚀 ~ target:", target)
         tasks = makeTasks(target, proto)
+        os.makedirs("./temps/", exist_ok=True)
+        import imageio
+        expressions = []
+        for _t in tasks:
+            expressions.append({
+                "task": _t,
+                "exp":_t.expression
+                })
+        
+        sorted(expressions, key=lambda d: len(d['exp'])) 
+        
+        tasks = []
+        
+        for _t in expressions[:80]:
+            if len(_t['task'].examples[0]) > 1:
+                tasks.append(_t['task'])
+                print(f"./temps/{_t['task'].name.replace(' ', '_')}.png")
+                i = Image.fromarray(np.array(_t['task'].examples[0][1], dtype=np.int8).reshape((28, 28)), mode="L")
+                imageio.imwrite(f"./temps/{_t['task'].name.replace(' ', '_').replace('/', '?')}.png", i)
+        
         eprint("Generated", len(tasks), "tasks")
 
         os.chdir("prototypical-networks")
@@ -598,7 +623,7 @@ def main(args):
     baseGrammar = Grammar.uniform(primitives, continuationType=turtle)
 
     eprint(baseGrammar)
-
+        
     timestamp = datetime.datetime.now().isoformat()
     timestamp = timestamp.replace(":", "-")
     timestamp = timestamp.replace(".", "-")
@@ -619,9 +644,8 @@ def main(args):
                            taskDataset=task_dataset,
                            testingTasks=test,
                            outputPrefix="%s/logo"%outputDirectory,
-                           evaluationTimeout=0.01,
+                           evaluationTimeout=10,
                            **args)
-
     r = None
     for result in generator:
         iteration = len(result.learningCurve)
@@ -635,6 +659,7 @@ def main(args):
                              dreamDirectory)
         r = result
 
+    # print(r)
     needsExport = [str(z)
                    for _, _, z
                    in r.grammars[-1].productions

@@ -996,7 +996,7 @@ class RecognitionModel(nn.Module):
                 nearest_ind = max_similarity[ind]
                 e.task.nearest_name = self.nearest_tasks[nearest_ind].name
 
-    def train(self, frontiers, _=None, steps=None, lr=0.001, topK=5, CPUs=1,
+    def train(self, frontiers, _=None, steps=None, lr=0.001, topK=5, CPUs=4,
               timeout=None, evaluationTimeout=0.001,
               helmholtzFrontiers=[], helmholtzRatio=0., helmholtzBatch=500,
               biasOptimal=None, defaultRequest=None, auxLoss=False, vectorized=True,
@@ -1357,7 +1357,6 @@ class RecognitionModel(nn.Module):
                                     unigramGrammar=self.generativeModel,
                                     max_mem_per_enumeration_thread=max_mem_per_enumeration_thread)
 
-
 class RecurrentFeatureExtractor(nn.Module):
     def __init__(self, _=None,
                  tasks=None,
@@ -1593,9 +1592,7 @@ class RecurrentFeatureExtractor(nn.Module):
                         return Task("Helmholtz", tp, examples)
                     return None
             return None
-                
-            
-    
+                    
 class LowRank(nn.Module):
     """
     Module that outputs a rank R matrix of size m by n from input of size i.
@@ -1645,10 +1642,7 @@ class LowRank(nn.Module):
         if needToSqueeze:
             y = y.squeeze(0)
         return y
-            
-            
-            
-
+                      
 class DummyFeatureExtractor(nn.Module):
     def __init__(self, tasks, testingTasks=[], cuda=False):
         super(DummyFeatureExtractor, self).__init__()

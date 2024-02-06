@@ -54,3 +54,5 @@ moses_compiled/
 
 failures/*
 jsonDebug
+**/temps
+**/tmp

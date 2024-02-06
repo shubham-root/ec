@@ -11,7 +11,7 @@ python bin/launch.py -k  -c -z n1-standard-64 baseline_enumeration_rational "pyt
 
 Google cloud experiments - repeated many times.
 
-
+python bin/logo.py --split 0.5 -t 1  --pseudoCounts 30 --aic 1.0 --structurePenalty 1.5 --topK 2 --arity 0 --maximumFrontier 5 -i 1  --storeTaskMetrics --testingTimeout 1  --taskReranker randomShuffle --taskBatchSize 50
 
 
 Text:

@@ -45,6 +45,7 @@ def drawLogo(*programs,
         jobs.append(entry)        
     message["jobs"] = jobs
     response = jsonBinaryInvoke("./logoDrawString", message)
+    # print("🚀 ~ response:", response)
 
     if len(programs) == 1:
         return response[0]
@@ -197,7 +198,7 @@ def manualLogoTask(name, expression, proto=False, needToTrain=False,
     t.highresolution = highresolution
     t.groundTruthProgram = p
     t.expression = expression
-    
+
     
         
     t.token_len = token_length(p)
@@ -780,8 +781,10 @@ def sampleSupervised(tasks, n):
 def manualLogoTasks(resolution=[28,128]):
     tasks = []
     def T(name, source, needToTrain=False, supervise=False):
-        tasks.append(manualLogoTask(name, source, supervise=supervise,
-                                    needToTrain=needToTrain, resolution=resolution))
+        # eprint("Manual Logo Task", name, source, supervise, needToTrain, resolution)
+        _t = manualLogoTask(name, source, supervise=supervise,
+                                    needToTrain=needToTrain, resolution=resolution)
+        tasks.append(_t)
     if False:
         for d,a,s in [('1l','0a','(loop i infinity (move epsilonLength epsilonAngle))'),
                       ('epsilonLength','0a','(loop i infinity (move epsilonLength epsilonAngle))'),
@@ -1222,8 +1225,10 @@ def montageTasks(tasks, prefix="", columns=None, testTrain=False):
     # print("🚀 ~ i:", i)
     # print(i)
     try:
-        import imageio     
-        imageio.imwrite('/tmp/%smontage.png'%prefix, i)
+        import imageio
+        import os
+        os.makedirs("./tmp", exist_ok=True)   
+        imageio.imwrite('./tmp/%smontage.png'%prefix, i)
         if testTrain:
             trainingTasks = arrays[:sum(t.mustTrain for t in tasks)]
             testingTasks = arrays[sum(t.mustTrain for t in tasks):]
@@ -1232,10 +1237,10 @@ def montageTasks(tasks, prefix="", columns=None, testTrain=False):
             arrays = trainingTasks + testingTasks
         else:
             random.shuffle(arrays)
-        imageio.imwrite('/tmp/%srandomMontage.png'%prefix, Image.fromarray(montage(arrays, columns=columns), mode="L"))
+        imageio.imwrite('./tmp/%srandomMontage.png'%prefix, Image.fromarray(montage(arrays, columns=columns), mode="L"))
     except:
         # import scipy.misc
-        imageio.imwrite('/tmp/%smontage.png'%prefix, i)
+        imageio.imwrite('./tmp/%smontage.png'%prefix, i)
         if testTrain:
             trainingTasks = arrays[:sum(t.mustTrain for t in tasks)]
             testingTasks = arrays[sum(t.mustTrain for t in tasks):]
@@ -1244,7 +1249,7 @@ def montageTasks(tasks, prefix="", columns=None, testTrain=False):
             arrays = trainingTasks + testingTasks
         else:
             random.shuffle(arrays)
-        imageio.imwrite('/tmp/%srandomMontage.png'%prefix, Image.fromarray(montage(arrays, columns=columns), mode="L"))
+        imageio.imwrite('./tmp/%srandomMontage.png'%prefix, Image.fromarray(montage(arrays, columns=columns), mode="L"))
 
 def demoLogoTasks():
     import scipy.misc
@@ -1258,13 +1263,13 @@ def demoLogoTasks():
                      for p in [g0.sample(arrow(turtle,turtle),
                                          maximumDepth=20)]
                      if p is not None]
-    os.system("mkdir  -p /tmp/dreams_0")
+    os.system("mkdir  -p ./tmp/dreams_0")
     for n,p in enumerate(programs):
-        with open(f"/tmp/dreams_0/{n}.dream","w") as handle:
+        with open(f"./tmp/dreams_0/{n}.dream","w") as handle:
             handle.write(str(p))
     drawLogo(*programs, pretty=True, smoothPretty=False,
              resolution=512,
-             filenames=[f"/tmp/dreams_0/{n}_pretty.png"
+             filenames=[f"./tmp/dreams_0/{n}_pretty.png"
                         for n in range(len(programs)) ],
              timeout=1)
     
@@ -1276,20 +1281,20 @@ def demoLogoTasks():
     for n,t in enumerate(tasks):
         a = t.highresolution
         w = int(len(a)**0.5)
-        imageio.imwrite('/tmp/logo%d.png'%n, Image.fromarray(np.array([a[i:i+w]
+        imageio.imwrite('./tmp/logo%d.png'%n, Image.fromarray(np.array([a[i:i+w]
                                                          for i in range(0,len(a),w) ]), mode="L"))
         logo_safe_name = t.name.replace("=","_").replace(' ','_').replace('/','_').replace("-","_") + ".png"
         #os.system(f"convert /tmp/logo{n}.png -morphology Dilate Octagon /tmp/{logo_safe_name}")
-        os.system(f"convert /tmp/logo{n}.png -channel RGB -negate /tmp/{logo_safe_name}")
+        os.system(f"convert ./tmp/logo{n}.png -channel RGB -negate /tmp/{logo_safe_name}")
     eprint(len(tasks),"tasks")
     eprint(sum(t.mustTrain for t in tasks),"need to be trained on")
 
     for t in dSLDemo():
         a = t.highresolution
         w = int(len(a)**0.5)
-        imageio.imwrite('/tmp/logoDemo%s.png'%t.name, Image.fromarray(np.array([a[i:i+w]
+        imageio.imwrite('./tmp/logoDemo%s.png'%t.name, Image.fromarray(np.array([a[i:i+w]
                                                                   for i in range(0,len(a),w) ]), mode="L"))
-        os.system(f"convert /tmp/logoDemo{t.name}.png -morphology Dilate Octagon /tmp/logoDemo{t.name}_dilated.png")
+        os.system(f"convert ./tmp/logoDemo{t.name}.png -morphology Dilate Octagon ./tmp/logoDemo{t.name}_dilated.png")
 
     tasks = [t for t in tasks if t.mustTrain ]
     random.shuffle(tasks)

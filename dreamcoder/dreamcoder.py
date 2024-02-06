@@ -232,6 +232,8 @@ def ecIterator(grammar, tasks,
                test_sleep_recognition_1=False, # Integration test for the language-based recognizer.
                test_next_iteration_settings=False, # Integration test for the second iteration.
                ):
+    # print("🚀 ~ tasks:", tasks)
+    # print("🚀 ~ grammar:", grammar)
     if enumerationTimeout is None:
         eprint(
             "Please specify an enumeration timeout:",
@@ -326,7 +328,7 @@ def ecIterator(grammar, tasks,
         for k in {"helmholtzRatio", "recognitionTimeout", "biasOptimal", "mask",
                   "contextual", "matrixRank", "reuseRecognition", "auxiliaryLoss", "ensembleSize"}:
             if k in parameters: del parameters[k]
-    else: del parameters["recognition_0"];
+    else: del parameters["recognition_0"]
     if recognition_0 and not contextual:
         if "matrixRank" in parameters:
             del parameters["matrixRank"]
@@ -478,42 +480,42 @@ def ecIterator(grammar, tasks,
 
     # Check if we are just updating the full task metrics
     # TODO: this no longer applies (Cathy Wong)
-    if addFullTaskMetrics:
-        if testingTimeout is not None and testingTimeout > enumerationTimeout:
-            enumerationTimeout = testingTimeout
-        if result.recognitionModel is not None:
-            _enumerator = lambda *args, **kw: result.recognitionModel.enumerateFrontiers(*args, **kw)
-        else: _enumerator = lambda *args, **kw: multicoreEnumeration(result.grammars[-1], *args, **kw)
-        enumerator = lambda *args, **kw: _enumerator(*args, 
-                                                     maximumFrontier=maximumFrontier, 
-                                                     CPUs=CPUs, evaluationTimeout=evaluationTimeout,
-                                                     solver=solver,
-                                                     **kw)
-        trainFrontiers, _, trainingTimes = enumerator(tasks, enumerationTimeout=enumerationTimeout)
-        testFrontiers, _, testingTimes = enumerator(testingTasks, enumerationTimeout=testingTimeout, testing=True)
+    # if addFullTaskMetrics:
+    #     if testingTimeout is not None and testingTimeout > enumerationTimeout:
+    #         enumerationTimeout = testingTimeout
+    #     if result.recognitionModel is not None:
+    #         _enumerator = lambda *args, **kw: result.recognitionModel.enumerateFrontiers(*args, **kw)
+    #     else: _enumerator = lambda *args, **kw: multicoreEnumeration(result.grammars[-1], *args, **kw)
+    #     enumerator = lambda *args, **kw: _enumerator(*args, 
+    #                                                  maximumFrontier=maximumFrontier, 
+    #                                                  CPUs=CPUs, evaluationTimeout=evaluationTimeout,
+    #                                                  solver=solver,
+    #                                                  **kw)
+    #     trainFrontiers, _, trainingTimes = enumerator(tasks, enumerationTimeout=enumerationTimeout)
+    #     testFrontiers, _, testingTimes = enumerator(testingTasks, enumerationTimeout=testingTimeout, testing=True)
 
-        recognizer = result.recognitionModel
-        updateTaskSummaryMetrics(result.recognitionTaskMetrics, trainingTimes, 'recognitionBestTimes')
-        updateTaskSummaryMetrics(result.recognitionTaskMetrics, recognizer.taskGrammarLogProductions(tasks), 'taskLogProductions')
-        updateTaskSummaryMetrics(result.recognitionTaskMetrics, recognizer.taskGrammarEntropies(tasks), 'taskGrammarEntropies')
-        updateTaskSummaryMetrics(result.recognitionTaskMetrics, result.recognitionModel.taskAuxiliaryLossLayer(tasks), 'taskAuxiliaryLossLayer')
+    #     recognizer = result.recognitionModel
+    #     updateTaskSummaryMetrics(result.recognitionTaskMetrics, trainingTimes, 'recognitionBestTimes')
+    #     updateTaskSummaryMetrics(result.recognitionTaskMetrics, recognizer.taskGrammarLogProductions(tasks), 'taskLogProductions')
+    #     updateTaskSummaryMetrics(result.recognitionTaskMetrics, recognizer.taskGrammarEntropies(tasks), 'taskGrammarEntropies')
+    #     updateTaskSummaryMetrics(result.recognitionTaskMetrics, result.recognitionModel.taskAuxiliaryLossLayer(tasks), 'taskAuxiliaryLossLayer')
         
-        updateTaskSummaryMetrics(result.recognitionTaskMetrics, testingTimes, 'heldoutTestingTimes')
-        updateTaskSummaryMetrics(result.recognitionTaskMetrics, recognizer.taskGrammarLogProductions(testingTasks), 'heldoutTaskLogProductions')
-        updateTaskSummaryMetrics(result.recognitionTaskMetrics, recognizer.taskGrammarEntropies(testingTasks), 'heldoutTaskGrammarEntropies')
-        updateTaskSummaryMetrics(result.recognitionTaskMetrics, result.recognitionModel.taskAuxiliaryLossLayer(testingTasks), 'heldoutAuxiliaryLossLayer')
+    #     updateTaskSummaryMetrics(result.recognitionTaskMetrics, testingTimes, 'heldoutTestingTimes')
+    #     updateTaskSummaryMetrics(result.recognitionTaskMetrics, recognizer.taskGrammarLogProductions(testingTasks), 'heldoutTaskLogProductions')
+    #     updateTaskSummaryMetrics(result.recognitionTaskMetrics, recognizer.taskGrammarEntropies(testingTasks), 'heldoutTaskGrammarEntropies')
+    #     updateTaskSummaryMetrics(result.recognitionTaskMetrics, result.recognitionModel.taskAuxiliaryLossLayer(testingTasks), 'heldoutAuxiliaryLossLayer')
 
-        updateTaskSummaryMetrics(result.recognitionTaskMetrics, {f.task: f
-                                                                 for f in trainFrontiers + testFrontiers
-                                                                 if len(f) > 0},
-                                 'frontier')
-        SUFFIX = ".pickle"
-        assert path.endswith(SUFFIX)
-        path = path[:-len(SUFFIX)] + "_FTM=True" + SUFFIX
-        with open(path, "wb") as handle: dill.dump(result, handle)
-        if recognition_0: ECResult.clearRecognitionModel(path)
+    #     updateTaskSummaryMetrics(result.recognitionTaskMetrics, {f.task: f
+    #                                                              for f in trainFrontiers + testFrontiers
+    #                                                              if len(f) > 0},
+    #                              'frontier')
+    #     SUFFIX = ".pickle"
+    #     assert path.endswith(SUFFIX)
+    #     path = path[:-len(SUFFIX)] + "_FTM=True" + SUFFIX
+    #     with open(path, "wb") as handle: dill.dump(result, handle)
+    #     if recognition_0: ECResult.clearRecognitionModel(path)
             
-        sys.exit(0)
+    #     sys.exit(0)
         
     # Preload any supervision if available into the all frontiers.
     print(f"Found n={len([t for t in tasks if t.add_as_supervised])} supervised tasks; initializing frontiers.")
@@ -548,6 +550,7 @@ def ecIterator(grammar, tasks,
     
     ######## Test Evaluation and background Helmholtz enumeration.
     for j in range(resume or 0, iterations):
+        eprint(f"STARTING ITERATION Currently {j} of {iterations}")
         # Clean up -- at each iteration, remove Helmholtz from the task language dictionary.
         for key_name in list(result.taskLanguage.keys()):
             if "Helmholtz" in key_name:
@@ -576,11 +579,11 @@ def ecIterator(grammar, tasks,
                                    solver=solver,
                                    enumerationTimeout=testingTimeout, evaluationTimeout=evaluationTimeout,
                                    test_dsl_only=test_dsl_only,
-                                   max_mem_per_enumeration_thread=max_mem_per_enumeration_thread)            
+                                   max_mem_per_enumeration_thread=max_mem_per_enumeration_thread)        
         # If we have to also enumerate Helmholtz frontiers,
         # do this extra sneaky in the background
         if n_models > 0 and biasOptimal and helmholtzRatio > 0 and \
-           all( str(p) != "REAL" for p in grammar.primitives ): # real numbers don't support this
+           all(str(p) != "REAL" for p in grammar.primitives ): # real numbers don't support this
             # the DSL is fixed, so the dreams are also fixed. don't recompute them.
             if useDSL or 'helmholtzFrontiers' not in locals():
                 serialize_special = featureExtractor.serialize_special if hasattr(featureExtractor, 'serialize_special') else None
@@ -604,6 +607,11 @@ def ecIterator(grammar, tasks,
         eprint("Using a waking task batch of size: " + str(len(wakingTaskBatch)))
 
         # WAKING UP
+        eprint("WAKE PHASE NOW!")
+        eprint("WAKE PHASE NOW!")
+        eprint("WAKE PHASE NOW!")
+        eprint("WAKE PHASE NOW!")
+        eprint("WAKE PHASE NOW!")
         if useDSL and enumerationTimeout > 0:
             enumeration_time = enumerationTimeout
             if initialTimeout is not None and initialTimeoutIterations is not None:
@@ -636,9 +644,18 @@ def ecIterator(grammar, tasks,
 
         eprint("Frontiers discovered top down: " + str(len(tasksHitTopDown)))
         eprint("Total frontiers: " + str(len([f for f in result.allFrontiers.values() if not f.empty])))
+        print(result.allFrontiers.values())
         if test_wake_generative_enumeration: yield result
+        # raise Exception()
+        
+        eprint("SLEEP PHASE NOW!")
+        eprint("SLEEP PHASE NOW!")
+        eprint("SLEEP PHASE NOW!")
+        eprint("SLEEP PHASE NOW!")
+        eprint("SLEEP PHASE NOW!")
         
         #### Recognition model round 0. No language.
+        
         result.models = [] # Reset the list of models at each iteration.
         if len(recognition_0) > 0 and recognitionTimeout > 0:
             result.tasksAttempted.update(wakingTaskBatch)
@@ -1066,6 +1083,7 @@ def sleep_recognition(result, grammar, taskBatch, tasks, testingTasks, allFronti
                                     nearest_tasks=nearest_tasks,
                                     id=i) for i in range(ensembleSize)]
     eprint(f"Currently using this much memory: {getThisMemoryUsage()}")
+    
     trainedRecognizers = parallelMap(min(CPUs,len(recognizers)),
                                      lambda recognizer: recognizer.train(allFrontiers,
                                                                          biasOptimal=biasOptimal,
