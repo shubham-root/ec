@@ -1428,3 +1428,6 @@ let primitive_rrevcdr = primitive "_rrevcdr" ((tlist tsubstr) @> (tlist tsubstr)
   let slice = Array.sub arr 0 (Array.length arr - 1) in
   Array.to_list slice
   );;
+
+let primitive_increment_custom = primitive "incr_custom" (tint @> tint) (fun x -> 1+x);;
+let primitive_increment2_custom = primitive "incr2_custom" (tint @> tint) (fun x -> 2+x);;
