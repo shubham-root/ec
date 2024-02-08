@@ -1431,3 +1431,6 @@ let primitive_rrevcdr = primitive "_rrevcdr" ((tlist tsubstr) @> (tlist tsubstr)
 
 let primitive_increment_custom = primitive "incr_custom" (tint @> tint) (fun x -> 1+x);;
 let primitive_increment2_custom = primitive "incr2_custom" (tint @> tint) (fun x -> 2+x);;
+let primitive_multip_1 = primitive "mult_custom" (tint @> tint) (fun x -> 1*x);;
+let primitive_multip_2 = primitive "mult2_custom" (tint @> tint) (fun x -> 2*x);;
+let primitive_multip_3 = primitive "mult3_custom" (tint @> tint) (fun x -> 3*x);;

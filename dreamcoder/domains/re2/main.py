@@ -69,13 +69,16 @@ def main(args):
     """
     primitive_names = args.pop("primitives")
     primitives, type_request = load_re2_primitives(primitive_names)
+    print("🚀 ~ type_request:", type_request)
     
     baseGrammar = Grammar.uniform(primitives)
     print("Using base grammar:")
     print(baseGrammar)
     
     task_dataset = args["taskDataset"]
+    print("🚀 ~ task_dataset:", task_dataset)
     task_dataset_dir=args.pop("taskDatasetDir")
+    print("🚀 ~ task_dataset_dir:", task_dataset_dir)
     train, test = loadRe2Dataset(task_dataset=task_dataset, task_dataset_dir=task_dataset_dir, type_request=type_request)
     eprint(f"Loaded dataset [{task_dataset}]: [{len(train)}] train and [{len(test)}] test tasks.")
     

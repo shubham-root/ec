@@ -1011,6 +1011,17 @@ class ContextualGrammar:
             self.noParent = LikelihoodSummary()
             self.variableParent = LikelihoodSummary()
             self.library = {e: [LikelihoodSummary() for _ in gs]  for e,gs in owner.library.items() }
+            
+        def __str__(self):
+            lines = ["No parent:",str(self.noParent),"",
+                    "Variable parent:",str(self.variableParent),"",
+                    ""]
+            for e,gs in self.library.items():
+                for j,g in enumerate(gs):
+                    lines.extend(["Parent %s, argument index %s"%(e,j),
+                                str(g),
+                                ""])
+            return "\n".join(lines)
 
         def record(self, parent, parentIndex, actual, possibles, constant):
             if parent is None: ls = self.noParent

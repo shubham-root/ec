@@ -7,16 +7,15 @@ import sys
 import dill
 import imageio
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 from collections import defaultdict
 
-from dreamcoder.domains.logo.logoPrimitives import primitives, turtle
+from dreamcoder.domains.logo2.logoPrimitives import primitives, turtle
 from dreamcoder.task import Task
 from dreamcoder.program import Abstraction, Application, Index, Program
 from dreamcoder.type import arrow
 from dreamcoder.utilities import eprint, jsonBinaryInvoke, random_seed, montage
 from dreamcoder.grammar import Grammar
-
 
 def drawLogo(*programs,
              timeout=None,
@@ -167,12 +166,18 @@ def manualLogoTask(name, expression, proto=False, needToTrain=False,
     g = Grammar.uniform(primitives, continuationType=turtle)
     gp = Grammar.uniform(primitives)
     try:
+        print(turtle)
+        print(arrow(turtle, turtle))
         l = g.logLikelihood(arrow(turtle,turtle),p)
         lp = gp.logLikelihood(arrow(turtle,turtle),p)
+        print(l, lp)
+        # raise(Exception())
         assert l >= lp
         groundTruthLogLikelihood = -l
         eprint(name,-l,"nats")
-    except:
+        
+    except: 
+        # raise Exception()
         groundTruthLogLikelihood = 10000
         eprint("WARNING: could not calculate likelihood of manual logo",p)
 
@@ -306,7 +311,7 @@ def generateLogoDataset(task_dataset, task_dataset_dir, language_dataset, langua
     writeLogoDataset(tasks, task_dataset, task_dataset_dir)
     if language_dataset is not None:
         writeLanguageDataset(tasks, language_dataset, language_dataset_dir)
-
+import time
 def writeLogoDataset(tasks, task_dataset, task_dataset_dir):
     print(f"Writing n={len(tasks)} to {task_dataset_dir}/{task_dataset}")
     from pathlib import Path
@@ -443,27 +448,27 @@ def makeLogoUnlimitedTasks(resolution=[28,128], n_tasks=None, split=0.75):
     # N-gon base shapes. 
     # a {small  | medium } {n} gon
     language = None
-    for n in range(3,10):
-        for length in [1, 2]: 
-            l = f"(*d 1l {length})"
-            body = f"""
-            (loop i {n}
-              (move {l} (/a 1a {n})))
-            """
-            size = LANGUAGE_CONSTANTS['size'][length]
-            if n == 3:
-                shape_name = 'triangle'
-            elif n == 4:
-                shape_name = 'square'
-            else:
-                shape_name = f"{n} gon"
-            name = f"{size} {shape_name}"  
-            language = f"a {name}"
-            T(language, body, needToTrain=True, language=language, template_name='base')
-            if length == 1 or (length == 2 and n < 6):
-                snowflake_bodies['ngon'][name] = body
-            if length == 1 and n < 6:
-                snowflake_small_bodies.add(name)
+    # for n in range(3,10):
+    #     for length in [1, 2]: 
+    #         l = f"(*d 1l {length})"
+    #         body = f"""
+    #         (loop i {n}
+    #           (move {l} (/a 1a {n})))
+    #         """
+    #         size = LANGUAGE_CONSTANTS['size'][length]
+    #         if n == 3:
+    #             shape_name = 'triangle'
+    #         elif n == 4:
+    #             shape_name = 'square'
+    #         else:
+    #             shape_name = f"{n} gon"
+    #         name = f"{size} {shape_name}"  
+    #         language = f"a {name}"
+    #         T(language, body, needToTrain=True, language=language, template_name='base')
+    #         if length == 1 or (length == 2 and n < 6):
+    #             snowflake_bodies['ngon'][name] = body
+    #         if length == 1 and n < 6:
+    #             snowflake_small_bodies.add(name)
     # Circle and semi-circle base shapes. 
     # a {small  | medium | large} {semicircle | circle}
     for n in [1,2,5]:
@@ -487,178 +492,178 @@ def makeLogoUnlimitedTasks(resolution=[28,128], n_tasks=None, split=0.75):
                 snowflake_bodies['circles'][name] = body
                 snowflake_small_bodies.add(name)
     
-    # Line segment base shapes. 
-    name = "short line"
-    body = "(move 1d 0a)"
-    language = f"a {name}"
-    T(language, body, needToTrain=True, language=language, template_name='base')
-    snowflake_bodies['line'][name] = body
-    snowflake_small_bodies.add(name)
+    # # Line segment base shapes. 
+    # name = "short line"
+    # body = "(move 1d 0a)"
+    # language = f"a {name}"
+    # T(language, body, needToTrain=True, language=language, template_name='base')
+    # snowflake_bodies['line'][name] = body
+    # snowflake_small_bodies.add(name)
     
     
-    ## Template 1: 'separated by a space', 'connected by a line'
-    # Build base shapes next to other shapes
-    for body_type_name in snowflake_bodies:
-        for body_base_name, body_base in snowflake_bodies[body_type_name].items():
-            for body_type_name_2 in snowflake_bodies:
-                for body_base_name_2, body_base_2 in snowflake_bodies[body_type_name_2].items():
-                    if body_base_name not in snowflake_small_bodies and body_base_name_2 not in snowflake_small_bodies: pass
-                    for dash_dist in [2, 5]:
-                        if dash_dist <= 2:
-                            # Sometimes these overlap
-                            name = f"a {body_base_name} next to a {body_base_name_2}"
-                        else:
-                            sep_name = LANGUAGE_CONSTANTS['separation'][dash_dist]
-                            name = f"a {body_base_name} separated by a {sep_name} space from a {body_base_name_2}"
-                        T(name,
-                          f"""
-                          ({body_base}
-                          (p (move (*d 1d {dash_dist}) 0a))
-                          {body_base_2})
-                          """,
-                          needToTrain=False, 
-                          language=name,
-                          template_name='separated by distance')
-                    for dash_dist in [2, 5]:
-                        sep_name = LANGUAGE_CONSTANTS['separation'][dash_dist]
-                        name = f"a {body_base_name} connected by a {sep_name} line to a {body_base_name_2}"
-                        T(name,
-                          f"""
-                          ({body_base}
-                          (move (*d 1d {dash_dist}) 0a)
-                          {body_base_2})
-                          """,
-                          needToTrain=False,
-                          language=name,
-                          template_name='connected_by_a_line')
+    # ## Template 1: 'separated by a space', 'connected by a line'
+    # # Build base shapes next to other shapes
+    # for body_type_name in snowflake_bodies:
+    #     for body_base_name, body_base in snowflake_bodies[body_type_name].items():
+    #         for body_type_name_2 in snowflake_bodies:
+    #             for body_base_name_2, body_base_2 in snowflake_bodies[body_type_name_2].items():
+    #                 if body_base_name not in snowflake_small_bodies and body_base_name_2 not in snowflake_small_bodies: pass
+    #                 for dash_dist in [2, 5]:
+    #                     if dash_dist <= 2:
+    #                         # Sometimes these overlap
+    #                         name = f"a {body_base_name} next to a {body_base_name_2}"
+    #                     else:
+    #                         sep_name = LANGUAGE_CONSTANTS['separation'][dash_dist]
+    #                         name = f"a {body_base_name} separated by a {sep_name} space from a {body_base_name_2}"
+    #                     T(name,
+    #                       f"""
+    #                       ({body_base}
+    #                       (p (move (*d 1d {dash_dist}) 0a))
+    #                       {body_base_2})
+    #                       """,
+    #                       needToTrain=False, 
+    #                       language=name,
+    #                       template_name='separated by distance')
+    #                 for dash_dist in [2, 5]:
+    #                     sep_name = LANGUAGE_CONSTANTS['separation'][dash_dist]
+    #                     name = f"a {body_base_name} connected by a {sep_name} line to a {body_base_name_2}"
+    #                     T(name,
+    #                       f"""
+    #                       ({body_base}
+    #                       (move (*d 1d {dash_dist}) 0a)
+    #                       {body_base_2})
+    #                       """,
+    #                       needToTrain=False,
+    #                       language=name,
+    #                       template_name='connected_by_a_line')
     
-    #### Template 2: 'In a row'
-    for body_type_name in snowflake_bodies:
-        for body_base_name, body_base in snowflake_bodies[body_type_name].items():
-            if body_base_name in snowflake_small_bodies:
-                for n in [3,4,5,6]:
-                    name = f"{n} {body_base_name} s in a row"
-                    row = f"""
-                    (loop j {n}
-                    (embed {body_base})
-                    (p (move 1d 0a)))"""
-                    T(name, row, needToTrain=False, language=name,
-                    template_name='in_a_row')
+    # #### Template 2: 'In a row'
+    # for body_type_name in snowflake_bodies:
+    #     for body_base_name, body_base in snowflake_bodies[body_type_name].items():
+    #         if body_base_name in snowflake_small_bodies:
+    #             for n in [3,4,5,6]:
+    #                 name = f"{n} {body_base_name} s in a row"
+    #                 row = f"""
+    #                 (loop j {n}
+    #                 (embed {body_base})
+    #                 (p (move 1d 0a)))"""
+    #                 T(name, row, needToTrain=False, language=name,
+    #                 template_name='in_a_row')
     
     # # Build snowflakes
-    for rotations in [3,5,6,7,8]:
-        for body_type_name in snowflake_bodies:
-            for body_base_name, body_base in snowflake_bodies[body_type_name].items():
-                # Template: snowflakes with no arm connecting them to the center.
-                body = f"{body_base}"
-                name = f"{rotations} sided snowflake with a {body_base_name} as arms"
-                T(name,
-                  """
-                  (loop j %d
-                  (embed %s)
-                  (move 0d (/a 1a %d)))"""%(rotations,body,rotations),
-                  needToTrain=False,
-                  template_name="snowflake shape arms",
-                  language=name)
+    # for rotations in [3,5,6,7,8]:
+    #     for body_type_name in snowflake_bodies:
+    #         for body_base_name, body_base in snowflake_bodies[body_type_name].items():
+    #             # Template: snowflakes with no arm connecting them to the center.
+    #             body = f"{body_base}"
+    #             name = f"{rotations} sided snowflake with a {body_base_name} as arms"
+    #             T(name,
+    #               """
+    #               (loop j %d
+    #               (embed %s)
+    #               (move 0d (/a 1a %d)))"""%(rotations,body,rotations),
+    #               needToTrain=False,
+    #               template_name="snowflake shape arms",
+    #               language=name)
     
-                # Template 3: snowflakes with an 'arm' connecting them to the center
-                # Snowflakes with an 'arm' connecting them to the center.
-                for arm_length in [1, 2]:
-                    body = f"(move (*d 1d {arm_length}) 0a) {body_base}"
-                    name = f"{rotations} sided snowflake with a {LANGUAGE_CONSTANTS['separation'][arm_length]} line and a {body_base_name} as arms"
-                    T(name,
-                      """
-                      (loop j %d
-                      (embed %s)
-                      (move 0d (/a 1a %d)))"""%(rotations,body,rotations),
-                      needToTrain=False,
-                      template_name="snowflake line shape arms",
-                      language=name)
+    #             # Template 3: snowflakes with an 'arm' connecting them to the center
+    #             # Snowflakes with an 'arm' connecting them to the center.
+    #             for arm_length in [1, 2]:
+    #                 body = f"(move (*d 1d {arm_length}) 0a) {body_base}"
+    #                 name = f"{rotations} sided snowflake with a {LANGUAGE_CONSTANTS['separation'][arm_length]} line and a {body_base_name} as arms"
+    #                 T(name,
+    #                   """
+    #                   (loop j %d
+    #                   (embed %s)
+    #                   (move 0d (/a 1a %d)))"""%(rotations,body,rotations),
+    #                   needToTrain=False,
+    #                   template_name="snowflake line shape arms",
+    #                   language=name)
     
-                # Snowflakes with distance from the center.
-                for dash_dist in [1, 2]:
-                    name = f"{rotations} sided snowflake with a {LANGUAGE_CONSTANTS['separation'][dash_dist]} space and a {body_base_name} as arms"
-                    body = f"(p (move (*d 1d {dash_dist}) 0a)) {body_base}"
-                    T(name,
-                      """
-                      (loop j %d
-                      (embed %s)
-                      (move 0d (/a 1a %d)))"""%(rotations,body,rotations),
-                      template_name="snowflake space shape arms",
-                      needToTrain=False,
-                      language=name)
-                # Snowflakes with a dash, line, then a shape.
-                if body_base_name in snowflake_small_bodies:
-                    name = f"{rotations} sided snowflake with a short space and a short line and a short space and a {body_base_name} as arms"
+    #             # Snowflakes with distance from the center.
+    #             for dash_dist in [1, 2]:
+    #                 name = f"{rotations} sided snowflake with a {LANGUAGE_CONSTANTS['separation'][dash_dist]} space and a {body_base_name} as arms"
+    #                 body = f"(p (move (*d 1d {dash_dist}) 0a)) {body_base}"
+    #                 T(name,
+    #                   """
+    #                   (loop j %d
+    #                   (embed %s)
+    #                   (move 0d (/a 1a %d)))"""%(rotations,body,rotations),
+    #                   template_name="snowflake space shape arms",
+    #                   needToTrain=False,
+    #                   language=name)
+    #             # Snowflakes with a dash, line, then a shape.
+    #             if body_base_name in snowflake_small_bodies:
+    #                 name = f"{rotations} sided snowflake with a short space and a short line and a short space and a {body_base_name} as arms"
     
-                    body = f"(p (move 1d 0a)) (move 1d 0a) (p (move 1d 0a)) {body_base}"
-                    T(name,
-                      """
-                      (loop j %d
-                      (embed %s)
-                      (move 0d (/a 1a %d)))"""%(rotations,body,rotations),
-                      needToTrain=False,
-                      language=name,
-                      template_name="snowflake space line shape arms")
-                    # Cross product of two shapes.
-                    for body_type_name_2 in snowflake_bodies:
-                        for body_base_name_2, base_2 in snowflake_bodies[body_type_name_2].items():
-                            if body_base_name_2 in snowflake_small_bodies:
-                                if body_type_name_2 == 'ngon' and '1l' in body_base_name_2: continue # Too hard to distinguish
-                                body = f"(p (move 1d 0a)) {body_base}  (p (move 1d 0a)) {base_2}"
+    #                 body = f"(p (move 1d 0a)) (move 1d 0a) (p (move 1d 0a)) {body_base}"
+    #                 T(name,
+    #                   """
+    #                   (loop j %d
+    #                   (embed %s)
+    #                   (move 0d (/a 1a %d)))"""%(rotations,body,rotations),
+    #                   needToTrain=False,
+    #                   language=name,
+    #                   template_name="snowflake space line shape arms")
+    #                 # Cross product of two shapes.
+    #                 for body_type_name_2 in snowflake_bodies:
+    #                     for body_base_name_2, base_2 in snowflake_bodies[body_type_name_2].items():
+    #                         if body_base_name_2 in snowflake_small_bodies:
+    #                             if body_type_name_2 == 'ngon' and '1l' in body_base_name_2: continue # Too hard to distinguish
+    #                             body = f"(p (move 1d 0a)) {body_base}  (p (move 1d 0a)) {base_2}"
     
-                                if body_base_name == body_base_name_2:
-                                    name = f"{rotations} sided snowflake with 2 {body_base_name} s as arms"
-                                else:
-                                    name = f"{rotations} sided snowflake with a {body_base_name} and a {body_base_name_2} as arms"
+    #                             if body_base_name == body_base_name_2:
+    #                                 name = f"{rotations} sided snowflake with 2 {body_base_name} s as arms"
+    #                             else:
+    #                                 name = f"{rotations} sided snowflake with a {body_base_name} and a {body_base_name_2} as arms"
     
-                                T(name,
-                                """
-                                (loop j %d
-                                (embed %s)
-                                (move 0d (/a 1a %d)))"""%(rotations,body,rotations),
-                                needToTrain=False,
-                                language=name,
-                                template_name="snowflake two shape arms")
+    #                             T(name,
+    #                             """
+    #                             (loop j %d
+    #                             (embed %s)
+    #                             (move 0d (/a 1a %d)))"""%(rotations,body,rotations),
+    #                             needToTrain=False,
+    #                             language=name,
+    #                             template_name="snowflake two shape arms")
     
     ### Miscellaneous other tasks.
-    name = "a vertical short line"
-    T(name, "((move 0d (/a 1a 4)) (move 1d 0a))",
-      needToTrain=True, template_name='base', language=name)
+    # name = "a vertical short line"
+    # T(name, "((move 0d (/a 1a 4)) (move 1d 0a))",
+    #   needToTrain=True, template_name='base', language=name)
     
-    # Note the off by one in the loop
-    for i in [6,7,8,9]:
-        name = f"a greek spiral with {i-1} turns"
-        T(name,
-          """
-          (loop i %d
-          (move (*l 1l i) (/a 1a 4)))
-          """%i,
-          needToTrain=False,
-          template_name="greek spiral",
-          language=name)
+    # # Note the off by one in the loop
+    # for i in [6,7,8,9]:
+    #     name = f"a greek spiral with {i-1} turns"
+    #     T(name,
+    #       """
+    #       (loop i %d
+    #       (move (*l 1l i) (/a 1a 4)))
+    #       """%i,
+    #       needToTrain=False,
+    #       template_name="greek spiral",
+    #       language=name)
     
-    for i in [5,7,9]:
-        name = f"a {i} pointed star"
-        T(name,
-          """
-          (loop i %d (move (*d 1d 4) (-a (/a 1a 2) (/a (/a 1a 2) %s))))
-          """%(i,i),
-          needToTrain=False,
-          template_name="star",
-          language=name)
+    # for i in [5,7,9]:
+    #     name = f"a {i} pointed star"
+    #     T(name,
+    #       """
+    #       (loop i %d (move (*d 1d 4) (-a (/a 1a 2) (/a (/a 1a 2) %s))))
+    #       """%(i,i),
+    #       needToTrain=False,
+    #       template_name="star",
+    #       language=name)
     
-    # Note that there is an off by one in the number of circles actually drawn
-    for n in [4,5,6,7,8,9]:
-        name = f"{n-1} concentric square s"
-        T(name,
-          """
-          (for i %d
-          (embed (loop j 4 (move (*d 1d i) (/a 1a 4)))))
-          """%n,
-          needToTrain=False,
-          language=name,
-          template_name='concentric squares')
+    # # Note that there is an off by one in the number of circles actually drawn
+    # for n in [4,5,6,7,8,9]:
+    #     name = f"{n-1} concentric square s"
+    #     T(name,
+    #       """
+    #       (for i %d
+    #       (embed (loop j 4 (move (*d 1d i) (/a 1a 4)))))
+    #       """%n,
+    #       needToTrain=False,
+    #       language=name,
+    #       template_name='concentric squares')
     
     # Note that there is an off by one in the number of circles actually drawn
     for n in [3,4,5,6,7,8,9]:
@@ -673,30 +678,30 @@ def makeLogoUnlimitedTasks(resolution=[28,128], n_tasks=None, split=0.75):
           needToTrain=False,
           language=name,
           template_name='concentric circles')
-    for n in [3,4,5,6,7,8]:
-        name = f"a {n} stepped staircase"
-        T(name,
-          """
-          (loop i %d
-          (move 1d (/a 1a 4))
-          (move 1d (/a 1a 4))
-          (move 0d (/a 1a 2)))
-          """%n,
-          needToTrain=False,
-          language=name,
-          template_name='staircase')
-    for n in [2,3,4,5]:#range(1,5):
-        name = f"a {n} stepped zigzag"
-        T(name,
-          """
-          ((move 0d (/a 1a 8))
-          (loop i %d
-          (move 1d (/a 1a 4)) 
-          (move 1d (+a (/a 1a 2) (/a 1a 4)))))
-          """%n,
-         needToTrain=False,
-         language=name,
-         template_name='zigzag')
+    # for n in [3,4,5,6,7,8]:
+    #     name = f"a {n} stepped staircase"
+    #     T(name,
+    #       """
+    #       (loop i %d
+    #       (move 1d (/a 1a 4))
+    #       (move 1d (/a 1a 4))
+    #       (move 0d (/a 1a 2)))
+    #       """%n,
+    #       needToTrain=False,
+    #       language=name,
+    #       template_name='staircase')
+    # for n in [2,3,4,5]:#range(1,5):
+    #     name = f"a {n} stepped zigzag"
+    #     T(name,
+    #       """
+    #       ((move 0d (/a 1a 8))
+    #       (loop i %d
+    #       (move 1d (/a 1a 4)) 
+    #       (move 1d (+a (/a 1a 2) (/a 1a 4)))))
+    #       """%n,
+    #      needToTrain=False,
+    #      language=name,
+    #      template_name='zigzag')
     
     with random_seed(42): 
         total_tasks = sum(len(tasks[template_name]) for template_name in tasks)
@@ -806,181 +811,181 @@ def manualLogoTasks(resolution=[28,128]):
     def slant(n):
         return f"(move 0d (/a 1a {n}))"
 
-    for n,l,s in [(3,"1l",8),
-                  (4,"(*d 1d 3)",None),
-                  (5,"1l",None),
-                  (6,"(*d 1d 2)",5),
-                  (7,"1l",None),
-                  (8,"(/d 1d 2)",None)]:
-        T(f"{n}-gon {l}{'' if s is None else ' slanted '+str(s)}",
-          f"""
-          ({'' if s is None else slant(s)}
-           (loop i {n}
-            (move {l} (/a 1a {n}))))
-          """,
-          needToTrain=True)
-    for n,l,s in [(3,"(*d 1l 2)",None),
-                (4,"(*d 1d 4)",None),
-                (5,"(*d 1d 2)",None),
-                (6,"1l",None),
-                (7,"(*d 1d 3)",None),
-                (8,"1l",3)]:
-        T(f"{n}-gon {l}{'' if s is None else ' slanted '+str(s)}",
-          f"""
-          ({'' if s is None else slant(s)}
-           (loop i {n}
-            (move {l} (/a 1a {n}))))
-          """,
-          needToTrain=False)
+    # for n,l,s in [(3,"1l",8),
+    #               (4,"(*d 1d 3)",None),
+    #               (5,"1l",None),
+    #               (6,"(*d 1d 2)",5),
+    #               (7,"1l",None),
+    #               (8,"(/d 1d 2)",None)]:
+    #     T(f"{n}-gon {l}{'' if s is None else ' slanted '+str(s)}",
+    #       f"""
+    #       ({'' if s is None else slant(s)}
+    #        (loop i {n}
+    #         (move {l} (/a 1a {n}))))
+    #       """,
+    #       needToTrain=True)
+    # for n,l,s in [(3,"(*d 1l 2)",None),
+    #             (4,"(*d 1d 4)",None),
+    #             (5,"(*d 1d 2)",None),
+    #             (6,"1l",None),
+    #             (7,"(*d 1d 3)",None),
+    #             (8,"1l",3)]:
+    #     T(f"{n}-gon {l}{'' if s is None else ' slanted '+str(s)}",
+    #       f"""
+    #       ({'' if s is None else slant(s)}
+    #        (loop i {n}
+    #         (move {l} (/a 1a {n}))))
+    #       """,
+    #       needToTrain=False)
         
 
-    T("upwards", "((move 0d (/a 1a 4)) (move 1d 0a))",
-      needToTrain=True)
-    T("right angle", "((move (*d 1d 2) (/a 1a 4)) (move 1d 0a))",
-      needToTrain=True)
-    T("right angle epsilon", "((move epsilonLength (/a 1a 4)) (move epsilonLength 0a))",
-      needToTrain=True)
+    # T("upwards", "((move 0d (/a 1a 4)) (move 1d 0a))",
+    #   needToTrain=True)
+    # T("right angle", "((move (*d 1d 2) (/a 1a 4)) (move 1d 0a))",
+    #   needToTrain=True)
+    # T("right angle epsilon", "((move epsilonLength (/a 1a 4)) (move epsilonLength 0a))",
+    #   needToTrain=True)
 
-    T("line segment", "(move 1d 0a)",
-      needToTrain=True)
+    # T("line segment", "(move 1d 0a)",
+    #   needToTrain=True)
 
-    T("square slanted by 2pi/3",
-      """((move 0d (/a 1a 3))
-      (loop k 4 (move 1d (/a 1a 4))))""",
-      needToTrain=True)
-    T("semicircle slanted by 2pi/5",
-      """((move 0d (/a 1a 5))
-      (loop i infinity
-      (move (*d epsilonLength 4) epsilonAngle)))""",
-      needToTrain=True)
-    T("Greek spiral slanted by 2pi/6",
-      """((move 0d (/a 1a 6))
-      (loop i 7 (move (*l 1l i) (/a 1a 4))))""",
-      needToTrain=True)
-    T("Hook slanted by 2pi/7",
-      """((move 0d (/a 1a 7))
-      (move 1d 0a)
-      (loop i infinity
-      (move (*d epsilonLength 4) epsilonAngle)))""",
-      needToTrain=True)
-    T("""slanted line""",
-      """((move 0d (/a 1a 8))
-      (move (*d 1l 3) 0a))""",
-      needToTrain=True)
+    # T("square slanted by 2pi/3",
+    #   """((move 0d (/a 1a 3))
+    #   (loop k 4 (move 1d (/a 1a 4))))""",
+    #   needToTrain=True)
+    # T("semicircle slanted by 2pi/5",
+    #   """((move 0d (/a 1a 5))
+    #   (loop i infinity
+    #   (move (*d epsilonLength 4) epsilonAngle)))""",
+    #   needToTrain=True)
+    # T("Greek spiral slanted by 2pi/6",
+    #   """((move 0d (/a 1a 6))
+    #   (loop i 7 (move (*l 1l i) (/a 1a 4))))""",
+    #   needToTrain=True)
+    # T("Hook slanted by 2pi/7",
+    #   """((move 0d (/a 1a 7))
+    #   (move 1d 0a)
+    #   (loop i infinity
+    #   (move (*d epsilonLength 4) epsilonAngle)))""",
+    #   needToTrain=True)
+    # T("""slanted line""",
+    #   """((move 0d (/a 1a 8))
+    #   (move (*d 1l 3) 0a))""",
+    #   needToTrain=True)
     
 
-    for i in [6,7,8,9]:
-        T("Greek spiral %d"%i,
-          """
-          (loop i %d
-          (move (*l 1l i) (/a 1a 4)))
-          """%i,
-          needToTrain=i in [7,8])
-    for i in [2,3,4,5]:
-        T("smooth spiral %d"%i,
-          """
-          (loop i infinity 
-          (move (*d epsilonLength i) (*a epsilonAngle %d)))
-          """%i,
-          needToTrain=i in [3,5])
+    # for i in [6,7,8,9]:
+    #     T("Greek spiral %d"%i,
+    #       """
+    #       (loop i %d
+    #       (move (*l 1l i) (/a 1a 4)))
+    #       """%i,
+    #       needToTrain=i in [7,8])
+    # for i in [2,3,4,5]:
+    #     T("smooth spiral %d"%i,
+    #       """
+    #       (loop i infinity 
+    #       (move (*d epsilonLength i) (*a epsilonAngle %d)))
+    #       """%i,
+    #       needToTrain=i in [3,5])
 
-    T("smooth spiral 4 slanted by 2pi/2",
-      """
-          ((move 0d (/a 1a 2))
-      (loop i infinity 
-          (move (*d epsilonLength i) (*a epsilonAngle 4))))
-      """,
-      needToTrain=True)
+    # T("smooth spiral 4 slanted by 2pi/2",
+    #   """
+    #       ((move 0d (/a 1a 2))
+    #   (loop i infinity 
+    #       (move (*d epsilonLength i) (*a epsilonAngle 4))))
+    #   """,
+    #   needToTrain=True)
 
-    for i in [3,5,7,9]:
-        T("star %d"%i,
-          """
-          (loop i %d (move (*d 1d 4) (-a (/a 1a 2) (/a (/a 1a 2) %s))))
-          """%(i,i),
-          needToTrain=i in [5,9])
+    # for i in [3,5,7,9]:
+    #     T("star %d"%i,
+    #       """
+    #       (loop i %d (move (*d 1d 4) (-a (/a 1a 2) (/a (/a 1a 2) %s))))
+    #       """%(i,i),
+    #       needToTrain=i in [5,9])
 
-    T("leaf iteration 1.1",
-      """
-      (loop i infinity (move epsilonDistance (/a epsilonAngle 2)))
-      """,
-      needToTrain=True)
-    T("leaf iteration 1.2",
-      """
-      ((move 0d (/a 1a 2))
-      (loop i infinity (move epsilonDistance (/a epsilonAngle 2))))
-      """,
-      needToTrain=True)
-    T("leaf iteration 2.1",
-      """
-      (loop n 2
-      (loop i infinity (move epsilonDistance (/a epsilonAngle 2)))
-      (move 0d (/a 1a 4)))
-      """,
-      needToTrain=True)
-    T("leaf iteration 2.2",
-      """
-      ((move 0d (/a 1a 2))
-      (loop n 2
-      (loop i infinity (move epsilonDistance (/a epsilonAngle 2)))
-      (move 0d (/a 1a 4))))
-      """,
-      needToTrain=True)
-    for n in range(3,8):
-        T("flower %d"%n,
-          """
-          (loop j %d
-          (loop n 2
-          (loop i infinity (move epsilonDistance (/a epsilonAngle 2)))
-          (move 0d (/a 1a 4)))
-          (move 0d (/a 1a %d)))
-          """%(n,n),
-          needToTrain=n in range(3,5))        
+    # T("leaf iteration 1.1",
+    #   """
+    #   (loop i infinity (move epsilonDistance (/a epsilonAngle 2)))
+    #   """,
+    #   needToTrain=True)
+    # T("leaf iteration 1.2",
+    #   """
+    #   ((move 0d (/a 1a 2))
+    #   (loop i infinity (move epsilonDistance (/a epsilonAngle 2))))
+    #   """,
+    #   needToTrain=True)
+    # T("leaf iteration 2.1",
+    #   """
+    #   (loop n 2
+    #   (loop i infinity (move epsilonDistance (/a epsilonAngle 2)))
+    #   (move 0d (/a 1a 4)))
+    #   """,
+    #   needToTrain=True)
+    # T("leaf iteration 2.2",
+    #   """
+    #   ((move 0d (/a 1a 2))
+    #   (loop n 2
+    #   (loop i infinity (move epsilonDistance (/a epsilonAngle 2)))
+    #   (move 0d (/a 1a 4))))
+    #   """,
+    #   needToTrain=True)
+    # for n in range(3,8):
+    #     T("flower %d"%n,
+    #       """
+    #       (loop j %d
+    #       (loop n 2
+    #       (loop i infinity (move epsilonDistance (/a epsilonAngle 2)))
+    #       (move 0d (/a 1a 4)))
+    #       (move 0d (/a 1a %d)))
+    #       """%(n,n),
+    #       needToTrain=n in range(3,5))        
 
 
-    for n in [5,6]:
-        T("staircase %d"%n,
-          """
-          (loop i %d
-          (move 1d (/a 1a 4))
-          (move 1d (/a 1a 4))
-          (move 0d (/a 1a 2)))
-          """%n,
-          needToTrain=n in [5])
+    # for n in [5,6]:
+    #     T("staircase %d"%n,
+    #       """
+    #       (loop i %d
+    #       (move 1d (/a 1a 4))
+    #       (move 1d (/a 1a 4))
+    #       (move 0d (/a 1a 2)))
+    #       """%n,
+    #       needToTrain=n in [5])
 
-    for n in range(1,6):
-        T("blocks zigzag %d"%n,
-          """
-          (loop i %d
-          (move 1d (/a 1a 4)) (move 1d (/a 1a 4))
-          (move 1d (+a (/a 1a 2) (/a 1a 4))) (move 1d (+a (/a 1a 2) (/a 1a 4))))
-          """%n,
-          needToTrain=n in [1,2,3])
-    for n in [3,4]:#range(1,5):
-        T("diagonal zigzag %d"%n,
-          """
-          ((move 0d (/a 1a 8))
-          (loop i %d
-          (move 1d (/a 1a 4)) 
-          (move 1d (+a (/a 1a 2) (/a 1a 4)))))
-          """%n,
-          needToTrain=n == 4)
+    # for n in range(1,6):
+    #     T("blocks zigzag %d"%n,
+    #       """
+    #       (loop i %d
+    #       (move 1d (/a 1a 4)) (move 1d (/a 1a 4))
+    #       (move 1d (+a (/a 1a 2) (/a 1a 4))) (move 1d (+a (/a 1a 2) (/a 1a 4))))
+    #       """%n,
+    #       needToTrain=n in [1,2,3])
+    # for n in [3,4]:#range(1,5):
+    #     T("diagonal zigzag %d"%n,
+    #       """
+    #       ((move 0d (/a 1a 8))
+    #       (loop i %d
+    #       (move 1d (/a 1a 4)) 
+    #       (move 1d (+a (/a 1a 2) (/a 1a 4)))))
+    #       """%n,
+    #       needToTrain=n == 4)
 
     
 
     for n in [1,2,3,4,5,6]:
-        T("right semicircle of size %d"%n,
-          """
-          (loop i infinity
-          (move (*d epsilonLength %d) (-a 0a epsilonAngle)))
-          """%n,
-          needToTrain=n%2 == 0)
-        T("left semicircle of size %d"%n,
-          f"""
-          ({'' if n != 1 else slant(8)}
-           (loop i infinity
-            (move (*d epsilonLength {n}) epsilonAngle)))
-          """,
-          needToTrain=n%2 == 1)
+        # T("right semicircle of size %d"%n,
+        #   """
+        #   (loop i infinity
+        #   (move (*d epsilonLength %d) (-a 0a epsilonAngle)))
+        #   """%n,
+        #   needToTrain=n%2 == 0)
+        # T("left semicircle of size %d"%n,
+        #   f"""
+        #   ({'' if n != 1 else slant(8)}
+        #    (loop i infinity
+        #     (move (*d epsilonLength {n}) epsilonAngle)))
+        #   """,
+        #   needToTrain=n%2 == 1)
         T("circle of size %d"%n,
               """
               ((loop i infinity
@@ -988,221 +993,232 @@ def manualLogoTasks(resolution=[28,128]):
               (loop i infinity
               (move (*d epsilonLength %d) epsilonAngle)))
               """%(n,n),
-          needToTrain=n in [1,4,3,5,6])
+          needToTrain=n in [1,2,3])
 
-    for n in [5,6]:
-        T("%d enclosed circles"%n,
+    for n in [6, 7]:
+        name = f"{n-1} concentric circle s"
+        T(name,
           """
           (loop j %d
           (loop i infinity
           (move (*d epsilonLength j) epsilonAngle))
           (loop i infinity
           (move (*d epsilonLength j) epsilonAngle)))"""%n,
-          needToTrain=n == 5)
+          needToTrain=False)
+    # for n in [5,6]:
+    #     T("%d enclosed circles"%n,
+    #       """
+    #       (loop j %d
+    #       (loop i infinity
+    #       (move (*d epsilonLength j) epsilonAngle))
+    #       (loop i infinity
+    #       (move (*d epsilonLength j) epsilonAngle)))"""%n,
+    #       needToTrain=False)
 
-    for n,l in [(4,2),
-                (5,3),
-                (6,4),
-                (3,1)]:
-        T("%d-circle flower l=%d"%(n,l),
-          """
-          (loop j %d
-          (move 0d (/a 1a %d))
-          (embed (loop i infinity
-          (move (*d epsilonLength %d) epsilonAngle))
-          (loop i infinity
-          (move (*d epsilonLength %d) epsilonAngle))))"""%(n,n,l,l),
-          needToTrain=(n,l) in [(6,4),(3,1)])
+    # for n,l in [(4,2),
+    #             (5,3),
+    #             (6,4),
+    #             (3,1)]:
+    #     T("%d-circle flower l=%d"%(n,l),
+    #       """
+    #       (loop j %d
+    #       (move 0d (/a 1a %d))
+    #       (embed (loop i infinity
+    #       (move (*d epsilonLength %d) epsilonAngle))
+    #       (loop i infinity
+    #       (move (*d epsilonLength %d) epsilonAngle))))"""%(n,n,l,l),
+    #       needToTrain=(n,l) in [(6,4),(3,1)])
 
-    for n,l in [(3,1),(2,2),(1,3),
-                (2,1),(1,2),(1,1)]:
-        T("%d-semicircle sequence L=%d"%(n,l),
-          """
-          (loop j %d
-          (loop i infinity
-          (move (*d epsilonLength %d) epsilonAngle))
-          (loop i infinity
-          (move (*d epsilonLength %d) (-a 0a epsilonAngle))))
-          """%(n,l,l),
-          needToTrain=(n,l) in [(3,1),(2,2),(1,3)])
+    # for n,l in [(3,1),(2,2),(1,3),
+    #             (2,1),(1,2),(1,1)]:
+    #     T("%d-semicircle sequence L=%d"%(n,l),
+    #       """
+    #       (loop j %d
+    #       (loop i infinity
+    #       (move (*d epsilonLength %d) epsilonAngle))
+    #       (loop i infinity
+    #       (move (*d epsilonLength %d) (-a 0a epsilonAngle))))
+    #       """%(n,l,l),
+    #       needToTrain=(n,l) in [(3,1),(2,2),(1,3)])
 
-    for n,l in [(2,"1d"),
-                (3,"1d")]:
-        T("row of %d circles"%n,
-          """
-          (loop j %d
-          (embed (loop k 2 (loop i infinity (move epsilonLength epsilonAngle))))
-          (p (move %s 0a)))"""%(n,l),
-          needToTrain=n == 2)
-    for n,l in [(2,"1d"),
-                (3,"1d")]:
-        T("row of %d lines"%n,
-          """
-          (loop j %d
-          (move 1d 0a)
-          (p (move %s 0a)))"""%(n,l),
-          needToTrain=n == 2)
-    T("line next to semicircle",
-      """
-      ((move 1d 0a) (p (move 1d 0a)) (loop i infinity (move epsilonLength epsilonAngle)))
-      """,
-      needToTrain=True)
-    for n,l in [(3,"(/d 1d 2)"),
-                (4,"(/d 1d 3)")]:
-        T("%d dashed lines of size %s"%(n,l),
-          """(loop i %d (p (move 1d 0a)) (move %s 0a))"""%(n,l),
-          needToTrain=n == 3)
-    T("broken circle",
-      """
-      ((loop i infinity (move epsilonLength epsilonAngle)) (p (move 1d 0a)) (loop i infinity (move epsilonLength epsilonAngle)))
-      """,
-      needToTrain=True)
-    T("circle next to semicircle",
-      """
-      ((loop i infinity (move epsilonLength epsilonAngle))
-      (loop i infinity (move epsilonLength epsilonAngle))
-      (p (move 1d 0a))
-      (loop i infinity (move epsilonLength epsilonAngle)))
-      """,
-      needToTrain=True)
-    T("semicircle next to square",
-      """
-      ((loop i infinity (move epsilonLength epsilonAngle))
-      (p (move 1d 0a))
-      (loop i infinity (move 1d (/a 1a 4))))
-      """,
-      needToTrain=False)
-    T("circle next to square",
-      """
-      ((loop i infinity (move epsilonLength epsilonAngle))
-      (loop i infinity (move epsilonLength epsilonAngle))
-      (p (move 1d 0a))
-      (loop i infinity (move 1d (/a 1a 4))))
-      """,
-      needToTrain=False)
-    T("circle next to line",
-      """
-      ((loop i infinity (move epsilonLength epsilonAngle))
-      (loop i infinity (move epsilonLength epsilonAngle))
-      (p (move 1d 0a))
-      (move 1d 0a))
-      """,
-      needToTrain=True)
-    T("line next to circle",
-      """
-      ((move 1d 0a)
-      (p (move 1d 0a))
-      (loop i infinity (move epsilonLength epsilonAngle))
-      (loop i infinity (move epsilonLength epsilonAngle))      
-      (move 1d 0a))
-      """,
-      needToTrain=True)
-    for n,l in [(4,"1d"),
-                (5,"1d")]:
-        T("row of %d dashes"%n,
-          """
-          (loop j %d
-          (embed (move 0d (/a 1a 4)) (move 1d 0a))
-          (p (move %s 0a)))"""%(n,l),
-          needToTrain=n == 4)        
-    for n,l in [(5,"1d"),(6,"1d")]:
-        T("row of %d semicircles"%n,
-          """
-          (loop j %d
-          (embed (loop i infinity (move epsilonLength epsilonAngle)))
-          (p (move %s 0a)))"""%(n,l),
-          needToTrain=n == 5)
+    # for n,l in [(2,"1d"),
+    #             (3,"1d")]:
+    #     T("row of %d circles"%n,
+    #       """
+    #       (loop j %d
+    #       (embed (loop k 2 (loop i infinity (move epsilonLength epsilonAngle))))
+    #       (p (move %s 0a)))"""%(n,l),
+    #       needToTrain=n == 2)
+    # for n,l in [(2,"1d"),
+    #             (3,"1d")]:
+    #     T("row of %d lines"%n,
+    #       """
+    #       (loop j %d
+    #       (move 1d 0a)
+    #       (p (move %s 0a)))"""%(n,l),
+    #       needToTrain=n == 2)
+    # T("line next to semicircle",
+    #   """
+    #   ((move 1d 0a) (p (move 1d 0a)) (loop i infinity (move epsilonLength epsilonAngle)))
+    #   """,
+    #   needToTrain=True)
+    # for n,l in [(3,"(/d 1d 2)"),
+    #             (4,"(/d 1d 3)")]:
+    #     T("%d dashed lines of size %s"%(n,l),
+    #       """(loop i %d (p (move 1d 0a)) (move %s 0a))"""%(n,l),
+    #       needToTrain=n == 3)
+    # T("broken circle",
+    #   """
+    #   ((loop i infinity (move epsilonLength epsilonAngle)) (p (move 1d 0a)) (loop i infinity (move epsilonLength epsilonAngle)))
+    #   """,
+    #   needToTrain=True)
+    # T("circle next to semicircle",
+    #   """
+    #   ((loop i infinity (move epsilonLength epsilonAngle))
+    #   (loop i infinity (move epsilonLength epsilonAngle))
+    #   (p (move 1d 0a))
+    #   (loop i infinity (move epsilonLength epsilonAngle)))
+    #   """,
+    #   needToTrain=True)
+    # T("semicircle next to square",
+    #   """
+    #   ((loop i infinity (move epsilonLength epsilonAngle))
+    #   (p (move 1d 0a))
+    #   (loop i infinity (move 1d (/a 1a 4))))
+    #   """,
+    #   needToTrain=False)
+    # T("circle next to square",
+    #   """
+    #   ((loop i infinity (move epsilonLength epsilonAngle))
+    #   (loop i infinity (move epsilonLength epsilonAngle))
+    #   (p (move 1d 0a))
+    #   (loop i infinity (move 1d (/a 1a 4))))
+    #   """,
+    #   needToTrain=False)
+    # T("circle next to line",
+    #   """
+    #   ((loop i infinity (move epsilonLength epsilonAngle))
+    #   (loop i infinity (move epsilonLength epsilonAngle))
+    #   (p (move 1d 0a))
+    #   (move 1d 0a))
+    #   """,
+    #   needToTrain=True)
+    # T("line next to circle",
+    #   """
+    #   ((move 1d 0a)
+    #   (p (move 1d 0a))
+    #   (loop i infinity (move epsilonLength epsilonAngle))
+    #   (loop i infinity (move epsilonLength epsilonAngle))      
+    #   (move 1d 0a))
+    #   """,
+    #   needToTrain=True)
+    # for n,l in [(4,"1d"),
+    #             (5,"1d")]:
+    #     T("row of %d dashes"%n,
+    #       """
+    #       (loop j %d
+    #       (embed (move 0d (/a 1a 4)) (move 1d 0a))
+    #       (p (move %s 0a)))"""%(n,l),
+    #       needToTrain=n == 4)        
+    # for n,l in [(5,"1d"),(6,"1d")]:
+    #     T("row of %d semicircles"%n,
+        #   """
+        #   (loop j %d
+        #   (embed (loop i infinity (move epsilonLength epsilonAngle)))
+        #   (p (move %s 0a)))"""%(n,l),
+        #   needToTrain=n == 5)
 
-    with random_seed(42): # carefully selected for maximum entropy
-        for n in [3,4,5,6,7]:
-            body = {"empty": "(move 1d 0a)",
-                    "spiral": "(loop i infinity (move (*d epsilonLength i) (*a epsilonAngle 2)))",
-                    "dashed": "(p (move 1d 0a)) (move 1d 0a)",
-                    "circle": "(move 1d 0a) (loop k 2 (loop i infinity (move epsilonLength epsilonAngle)))",
-                    "lonely circle": "(p (move 1d 0a)) (loop k 2 (loop i infinity (move epsilonLength epsilonAngle)))",
-                    "square dashed": "(p (move 1d 0a)) (loop s 4 (move 1d (/a 1a 4)))",
-                    "square": "(move 1d 0a) (loop s 4 (move 1d (/a 1a 4)))",
-                    "close large semicircle": "(loop i infinity (move (*d epsilonLength 2) epsilonAngle))",
-                    "close semicircle": "(loop i infinity (move epsilonLength epsilonAngle))",
-                    "semicircle": "(move 1d 0a) (loop i infinity (move epsilonLength epsilonAngle))",
-                    "double dashed": "(p (move 1d 0a)) (move 1d 0a) (p (move 1d 0a)) (move 1d 0a)",
-                    "Greek": "(loop i 3 (move (*l 1l i) (/a 1a 4)))"}
-            for name in body:
-                if name == "spiral" and n not in [3,5]: continue
-                if name == "square" and n not in [5,3,6,7]: continue
-                if name == "semicircle" and n not in [5,3,4,6]: continue
-                if name == "Greek" and n not in [3,5]: continue
-                if name == "double dashed" and n not in [6,4,3]: continue
+    # with random_seed(42): # carefully selected for maximum entropy
+    #     for n in [3,4,5,6,7]:
+    #         body = {"empty": "(move 1d 0a)",
+    #                 "spiral": "(loop i infinity (move (*d epsilonLength i) (*a epsilonAngle 2)))",
+    #                 "dashed": "(p (move 1d 0a)) (move 1d 0a)",
+    #                 "circle": "(move 1d 0a) (loop k 2 (loop i infinity (move epsilonLength epsilonAngle)))",
+    #                 "lonely circle": "(p (move 1d 0a)) (loop k 2 (loop i infinity (move epsilonLength epsilonAngle)))",
+    #                 "square dashed": "(p (move 1d 0a)) (loop s 4 (move 1d (/a 1a 4)))",
+    #                 "square": "(move 1d 0a) (loop s 4 (move 1d (/a 1a 4)))",
+    #                 "close large semicircle": "(loop i infinity (move (*d epsilonLength 2) epsilonAngle))",
+    #                 "close semicircle": "(loop i infinity (move epsilonLength epsilonAngle))",
+    #                 "semicircle": "(move 1d 0a) (loop i infinity (move epsilonLength epsilonAngle))",
+    #                 "double dashed": "(p (move 1d 0a)) (move 1d 0a) (p (move 1d 0a)) (move 1d 0a)",
+    #                 "Greek": "(loop i 3 (move (*l 1l i) (/a 1a 4)))"}
+    #         for name in body:
+    #             if name == "spiral" and n not in [3,5]: continue
+    #             if name == "square" and n not in [5,3,6,7]: continue
+    #             if name == "semicircle" and n not in [5,3,4,6]: continue
+    #             if name == "Greek" and n not in [3,5]: continue
+    #             if name == "double dashed" and n not in [6,4,3]: continue
                 
-                mustTrain = False
+    #             mustTrain = False
 
-                mustTrain = mustTrain or (n == 3 and name == "Greek")
-                mustTrain = mustTrain or (n == 7 and name == "empty")
-                mustTrain = mustTrain or (n == 5 and name == "dashed")
-                mustTrain = mustTrain or (n == 7 and name == "circle")
-                mustTrain = mustTrain or (n == 6 and name == "circle")
-                mustTrain = mustTrain or (n == 6 and name == "lonely circle")
-                mustTrain = mustTrain or (n == 5 and name == "square")
-                mustTrain = mustTrain or (n == 7 and name == "square")
-                mustTrain = mustTrain or (n == 5 and name == "semicircle")
-                mustTrain = mustTrain or (n == 3 and name == "square dashed")
-                mustTrain = mustTrain or (n == 6 and name == "close semicircle")
-                mustTrain = mustTrain or (n == 5 and name == "close large semicircle")
-                mustTrain = mustTrain or (n == 3 and name == "spiral")
-                mustTrain = mustTrain or (n == 6 and name == "double dashed")
-                mustTrain = mustTrain or (n == 3 and name == "double dashed")
-                #mustTrain = mustTrain or (n == 6 and name == "empty")
+    #             mustTrain = mustTrain or (n == 3 and name == "Greek")
+    #             mustTrain = mustTrain or (n == 7 and name == "empty")
+    #             mustTrain = mustTrain or (n == 5 and name == "dashed")
+    #             mustTrain = mustTrain or (n == 7 and name == "circle")
+    #             mustTrain = mustTrain or (n == 6 and name == "circle")
+    #             mustTrain = mustTrain or (n == 6 and name == "lonely circle")
+    #             mustTrain = mustTrain or (n == 5 and name == "square")
+    #             mustTrain = mustTrain or (n == 7 and name == "square")
+    #             mustTrain = mustTrain or (n == 5 and name == "semicircle")
+    #             mustTrain = mustTrain or (n == 3 and name == "square dashed")
+    #             mustTrain = mustTrain or (n == 6 and name == "close semicircle")
+    #             mustTrain = mustTrain or (n == 5 and name == "close large semicircle")
+    #             mustTrain = mustTrain or (n == 3 and name == "spiral")
+    #             mustTrain = mustTrain or (n == 6 and name == "double dashed")
+    #             mustTrain = mustTrain or (n == 3 and name == "double dashed")
+    #             #mustTrain = mustTrain or (n == 6 and name == "empty")
 
-                #mustTrain = mustTrain or (random.random() < 0.07) # calibrated to give 70 training tasks
+    #             #mustTrain = mustTrain or (random.random() < 0.07) # calibrated to give 70 training tasks
                 
 
-                # # cap number of super easy snowflakes
-                # if name == "empty" and n not in [7]: mustTrain = False
-                # if name == "dashed" and n not in [4]: mustTrain = False
+    #             # # cap number of super easy snowflakes
+    #             # if name == "empty" and n not in [7]: mustTrain = False
+    #             # if name == "dashed" and n not in [4]: mustTrain = False
                 
 
-                T("%d-%s snowflake"%(n,name),
-                  """
-                  (loop j %d
-                  (embed %s)
-                  (move 0d (/a 1a %d)))"""%(n,body[name],n),
-                  needToTrain=mustTrain)
+    #             T("%d-%s snowflake"%(n,name),
+                #   """
+                #   (loop j %d
+                #   (embed %s)
+                #   (move 0d (/a 1a %d)))"""%(n,body[name],n),
+                #   needToTrain=mustTrain)
 
-    for n in [3,4]:#2,3,4]:
-        T("%d-row of squares"%n,
-          """
-          (loop i %d
-          (embed (loop k 4 (move 1d (/a 1a 4))))
-          (move 1d 0a))
-          """%n,
-          needToTrain=n == 4)
-    T("2x2 grid",
-    """
-    (for x 2 (embed (for y 2
-       (embed (loop k 4 (move 1d (/a 1a 4))))
-       (move 1d 0a)))
-       (move 0d (/a 1a 4)) (move 1d (-a 0a (/a 1a 4))))
-    """)
-    T("slanted squares",
-      """
-      ((embed (loop k 4 (move 1d (/a 1a 4))))
-      (move 0d (/a 1a 8))
-      (loop k 4 (move 1d (/a 1a 4))))
-      """)
-    for l in range(1,6):
+    # for n in [3,4]:#2,3,4]:
+    #     T("%d-row of squares"%n,
+    #       """
+    #       (loop i %d
+    #       (embed (loop k 4 (move 1d (/a 1a 4))))
+    #       (move 1d 0a))
+    #       """%n,
+    #       needToTrain=n == 4)
+    # T("2x2 grid",
+    # """
+    # (for x 2 (embed (for y 2
+    #    (embed (loop k 4 (move 1d (/a 1a 4))))
+    #    (move 1d 0a)))
+    #    (move 0d (/a 1a 4)) (move 1d (-a 0a (/a 1a 4))))
+    # """)
+    # T("slanted squares",
+    #   """
+    #   ((embed (loop k 4 (move 1d (/a 1a 4))))
+    #   (move 0d (/a 1a 8))
+    #   (loop k 4 (move 1d (/a 1a 4))))
+    #   """)
+    for l in [3,4]:
         T("square of size %d"%l,
           """
           (for i 4
           (move (*d 1d %d) (/a 1a 4)))
           """%l,
-          needToTrain=l in range(4))
-    for n in [5,7]:
+          needToTrain=True)
+    for n in [5,7,8,9]:
         T("%d-concentric squares"%n,
           """
           (for i %d
           (embed (loop j 4 (move (*d 1d i) (/a 1a 4)))))
           """%n,
-          needToTrain=n == 5)
+          needToTrain=n in [5, 7])
+    
     return tasks
 
 def montageTasks(tasks, prefix="", columns=None, testTrain=False):

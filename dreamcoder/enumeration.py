@@ -46,6 +46,7 @@ def multicoreEnumeration(g, tasks, _=None,
     if not isinstance(g, dict):
         g = {t: g for t in tasks}
     task2grammar = g
+    # print("🚀 ~ task2grammar:", task2grammar)
 
     # If we are not evaluating on held out testing tasks:
     # Bin the tasks by request type and grammar

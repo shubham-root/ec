@@ -435,18 +435,18 @@ def ecIterator(grammar, tasks,
                 result.taskLanguage[t.name] = []
     else:  # Start from scratch
         #for graphing of testing tasks
-        eprint("Data that gors into Exploration-Compression cycle")
+        eprint("Data that goes into Exploration-Compression cycle")
         eprint("-------------------------")
         eprint("Grammar")
         eprint([grammar.__repr__()])
         eprint("-------------------------")
         eprint("Models")
         eprint([])
-        eprint("-------------------------")
-        eprint("All Frontiers")
-        eprint({
-                t: Frontier([], task=t) for t in tasks
-                })
+        # eprint("-------------------------")
+        # eprint("All Frontiers")
+        # eprint({
+        #         t: Frontier([], task=t) for t in tasks
+        #         })
         eprint("-------------------------")
         eprint("Task Language")
         eprint({t.name: [] for t in tasks + testingTasks})
@@ -466,9 +466,9 @@ def ecIterator(grammar, tasks,
                           taskLanguage={
                               t.name: [] for t in tasks + testingTasks},
                           tasksAttempted=set())
-        eprint("--------------------------")
-        eprint("EC Iterator Result")
-        eprint(result)
+        # eprint("--------------------------")
+        # eprint("EC Iterator Result")
+        # eprint(result)
                           
     # Preload language dataset if avaiable.
     if languageDataset is not None:
@@ -481,7 +481,6 @@ def ecIterator(grammar, tasks,
         eprint("Loaded language dataset from ", languageDataset)
         if test_task_language: 
             yield result # Integration test outpoint.
-    
     if parser == 'loglinear':
         parserModel = LogLinearBigramTransitionParser
     else:
@@ -500,6 +499,8 @@ def ecIterator(grammar, tasks,
     # Check if we are just updating the full task metrics
     # TODO: this no longer applies (Cathy Wong)
     if addFullTaskMetrics:
+        print("We are going in here")
+        raise Exception()
         if testingTimeout is not None and testingTimeout > enumerationTimeout:
             enumerationTimeout = testingTimeout
         if result.recognitionModel is not None:
@@ -568,7 +569,7 @@ def ecIterator(grammar, tasks,
         assert False
     
     ######## Test Evaluation and background Helmholtz enumeration.
-    eprint(f"STARTING ITERATIONS")
+    eprint(f"STARTING ITERATIONS", iterations)
     for j in range(resume or 0, iterations):
         eprint("Currently {j} of {iterations}")
         # Clean up -- at each iteration, remove Helmholtz from the task language dictionary.

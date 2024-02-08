@@ -4,7 +4,7 @@ import random
 
 import binutil  # required to import from dreamcoder modules
 
-from dreamcoder.dreamcoder import commandlineArguments, ecIterator, DummyFeatureExtractor
+from dreamcoder.dreamcoder import commandlineArguments, ecIterator, DummyFeatureExtractor, RecurrentFeatureExtractor
 from dreamcoder.grammar import Grammar
 from dreamcoder.program import Primitive
 from dreamcoder.task import Task
@@ -15,11 +15,17 @@ from dreamcoder.utilities import numberOfCPUs
 def _incr_custom(x): return lambda x: x + 1
 def _incr2_custom(x): return lambda x: x + 2
 
+def _mult_custom(x): return lambda x: x * 1
+def _mult2_custom(x): return lambda x: x * 2
+def _mult3_custom(x): return lambda x: x * 3
 
 def addN_custom(n):
     x = random.choice(range(500))
     return {"i": x, "o": x + n}
 
+def multN_custom(n):
+    x = random.choice(range(500))
+    return {"i":x, "o": x * n}
 
 def get_tint_task(item):
     return Task(
@@ -51,6 +57,9 @@ if __name__ == "__main__":
     primitives = [
         Primitive("incr_custom", arrow(tint, tint), _incr_custom),
         Primitive("incr2_custom", arrow(tint, tint), _incr2_custom),
+        Primitive("mult_custom", arrow(tint, tint), _mult_custom),
+        Primitive("mult2_custom", arrow(tint, tint), _mult2_custom),
+        Primitive("mult3_custom", arrow(tint, tint), _mult3_custom)
     ]
 
     # Create grammar
@@ -60,26 +69,43 @@ if __name__ == "__main__":
     def add1_custom(): return addN_custom(1)
     def add2_custom(): return addN_custom(2)
     def add3_custom(): return addN_custom(3)
+    def mult1_custom(): return multN_custom(1)
+    def mult2_custom(): return multN_custom(2)
+    def mult3_custom(): return multN_custom(3)
 
     # Training data
 
     training_examples = [
-        {"name": "add1", "examples": [add1_custom() for _ in range(5000)]},
-        {"name": "add2", "examples": [add2_custom() for _ in range(5000)]},
-        {"name": "add3", "examples": [add3_custom() for _ in range(5000)]},
+        {"name": "add1_custom", "examples": [add1_custom() for _ in range(50)]},
+        {"name": "add2_custom", "examples": [add2_custom() for _ in range(50)]},
+        {"name": "add3_custom", "examples": [add3_custom() for _ in range(50)]},
+        {"name": "mult1_custom", "examples": [mult1_custom() for _ in range(50)]},
+        {"name": "mult2_custom", "examples": [mult2_custom() for _ in range(50)]},
+        {"name": "mult3_custom", "examples": [mult3_custom() for _ in range(50)]},
     ]
     training = [get_tint_task(item) for item in training_examples]
+    print("🚀 ~ training:", training)
 
     # Testing data
 
     def add4(): return addN_custom(4)
     def add0(): return addN_custom(0)
+    
+    def mul7(): return multN_custom(7)
+    def mul6(): return multN_custom(6)
+    
+    # def d_3m_3a_2a(): return mult3_custom(addN_custom(addN_custom(2)))
+    
 
     testing_examples = [
-        {"name": "add4", "examples": [add4() for _ in range(500)]},
-        {"name": "add6", "examples": [add0() for _ in range(500)]}
+        {"name": "add4_custom", "examples": [add4() for _ in range(50)]},
+        {"name": "add0_custom", "examples": [add0() for _ in range(50)]},
+        {"name": "mult7_custom", "examples": [mul7() for _ in range(50)]},
+        {"name": "mult6_custom", "examples": [mul6() for _ in range(50)]},
+        # {"name": "d_3m_3a_2a_custom", "examples": [d_3m_3a_2a() for _ in range(500)]},
     ]
     testing = [get_tint_task(item) for item in testing_examples]
+    print("🚀 ~ testing:", testing)
 
     # EC iterate
 
@@ -99,13 +125,16 @@ if __name__ == "__main__":
     generator = ecIterator(grammar,
                            training,
                            testingTasks=testing,
-                           featureExtractor=DummyFeatureExtractor,
+                           featureExtractor=RecurrentFeatureExtractor,
                            enumerationTimeout=2,
                            testingTimeout=2,
                            iterations=5,
                            recognitionEpochs=[1000],
                            parser="loglinear",
                            maximumFrontier=5,
-                           recognitionTimeout=100)
+                           recognitionTimeout=100,
+                           compressor='stitch',
+                           useDSL=True,
+                           testEvery=1)
     for i, _ in enumerate(generator):
         print('ecIterator count {}'.format(i))

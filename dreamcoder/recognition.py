@@ -11,8 +11,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.nn.utils.rnn import pack_padded_sequence
-
+import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image
 # luke
 import json
 
@@ -815,8 +816,15 @@ class RecognitionModel(nn.Module):
 
     def grammarOfTask(self, task):
         features = self.encode_features(task)
+        # print("🚀 ~ features:", features)
         if features is None: return None
-        return self(features)
+        x = self(features)
+        print(f"Updated grammar for task: {task.request}, {task.name}", x)
+        # np.array(_t['task'].examples[0][1], dtype=np.int8).reshape((28, 28)), mode="L"
+        # plt.imshow(features.reshape((16, 16)).detach().numpy(), cmap="gray")
+        # plt.show()
+        # raise Exception()
+        return x
 
     def grammarLogProductionsOfTask(self, task):
         """Returns the grammar logits from non-contextual models."""
@@ -897,13 +905,15 @@ class RecognitionModel(nn.Module):
                 for task in tasks}
 
     def frontierKL(self, frontier, auxiliary=False, vectorized=True):
+        print("Received for forward pass (KL)", frontier.json())
         import copy
         # print("🚀 ~ frontier:", frontier)
         features = self.encode_features(frontier.task)
+        print("🚀 ~ encoded features:", features)
         if features is None: return None, None
         # Monte Carlo estimate: draw a sample from the frontier
         entry = frontier.sample()
-
+        print("Calculating auxiliary loss from frontier and features")
         al = self.auxiliaryLoss(frontier, features if auxiliary else features.detach())
 
         if not vectorized:
@@ -920,9 +930,13 @@ class RecognitionModel(nn.Module):
             
 
     def frontierBiasOptimal(self, frontier, auxiliary=False, vectorized=True):
+        print("Received for forward pass (biasOptimal)", frontier.json())
         if not vectorized:
+            print("Input not vectorized")
             features = self.encode_features(frontier.task)
+            print("🚀 ~ encoded features:", features)
             if features is None: return None, None
+            print("Calculating auxiliary loss from frontier and features")
             al = self.auxiliaryLoss(frontier, features if auxiliary else features.detach())
             g = self(features)
             summaries = [entry.program for entry in frontier]
@@ -933,11 +947,15 @@ class RecognitionModel(nn.Module):
             
         batchSize = len(frontier.entries)
         features = self.encode_features(frontier.task)
+        print("🚀 ~ encode features:", features)
         if features is None: return None, None
+        print("Calculating auxiliary loss from frontier and features")
         al = self.auxiliaryLoss(frontier, features if auxiliary else features.detach())
-        features = self._MLP(features)
-        features = features.expand(batchSize, features.size(-1))  # TODO
-        lls = self.grammarBuilder.batchedLogLikelihoods(features, [entry.program for entry in frontier])
+        print("Passing features through a Sequential Network")
+        
+        f1 = self._MLP(features)
+        f2 = features.expand(batchSize, f1.size(-1))  # TODO
+        lls = self.grammarBuilder.batchedLogLikelihoods(f2, [entry.program for entry in frontier])
         actual_ll = torch.Tensor([ entry.logLikelihood for entry in frontier])
         lls = lls + (actual_ll.cuda() if self.use_cuda else actual_ll)
         ml = -lls.max() #Beware that inputs to max change output type
@@ -1008,9 +1026,9 @@ class RecognitionModel(nn.Module):
         """
         assert (steps is not None) or (timeout is not None)  or (epochs is not None), \
             "Cannot train recognition model without either a bound on the number of gradient steps, bound on the training time, or number of epochs"
-        if steps is None: steps = 9999999
-        if epochs is None: epochs = 9999999
-        if timeout is None: timeout = 9999999
+        if steps is None: steps = 99
+        if epochs is None: epochs = 99
+        if timeout is None: timeout = 99
         if biasOptimal is None: biasOptimal = len(helmholtzFrontiers) > 0
         
         requests = [frontier.task.request for frontier in frontiers]
@@ -1184,9 +1202,13 @@ class RecognitionModel(nn.Module):
         # We replace each program in the frontier with its likelihoodSummary
         # This is because calculating likelihood summaries requires juggling types
         # And type stuff is expensive!
+        # print("Frontiers before replacement", frontiers)
+        # print("Frontiers after replacement before normalizing", [self.replaceProgramsWithLikelihoodSummaries(f)
+                    #  for f in frontiers])
         frontiers = [self.replaceProgramsWithLikelihoodSummaries(f).normalize()
                      for f in frontiers]
-
+        # print("Frontiers after replacement", frontiers)
+        # raise Exception()
         feature_extractor_names = [
             str(encoder.__class__.__name__) for encoder in (self.featureExtractor, self.language_encoder)
             if encoder is not None
@@ -1223,19 +1245,24 @@ class RecognitionModel(nn.Module):
                 permutedFrontiers = [None]
 
             finishedSteps = False
+            let_it_roll = 0
             for frontier in permutedFrontiers:
                 # Randomly decide whether to sample from the generative model
                 dreaming = random.random() < helmholtzRatio
                 if dreaming: 
                     frontier = getHelmholtz()
-                    eprint("🚀 ~ dreamt up frontier", frontier.json())
+                    # eprint("🚀 ~ dreamt up frontier", frontier.json())
                     
                 self.zero_grad()
-                eprint("Data going in for forward pass")
-                eprint(frontier.json())
+                # eprint("Data going in for forward pass")
+                # eprint(frontier.json())
                 loss, classificationLoss = \
                         self.frontierBiasOptimal(frontier, auxiliary=auxLoss, vectorized=vectorized) if biasOptimal \
                         else self.frontierKL(frontier, auxiliary=auxLoss, vectorized=vectorized)
+                # if not let_it_roll:
+                #     print("Now we wait for you to understand")
+                #     _f = input("Enter 0 to check again, or anything else to autopilot")
+                #     let_it_roll = int(_f)
                 if loss is None:
                     if not dreaming:
                         eprint("ERROR: Could not extract features during experience replay.")

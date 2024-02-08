@@ -452,7 +452,7 @@ let enumerate_for_tasks (g: contextual_grammar) ?verbose:(verbose = true)
         enumerate_programs ~maxFreeParameters:maxFreeParameters ~nc:nc g request
           (!lower_bound) (!lower_bound +. budgetIncrement)
           ~final:(fun () ->
-              (* Printf.eprintf "%d\n" !number_of_enumerated_programs; flush_everything(); *)
+              (* Printf.eprintf "%d\n Number of enumerate programs" !number_of_enumerated_programs; flush_everything(); *)
               [(Array.map ~f:Heap.to_list hits, !number_of_enumerated_programs)])
           (fun p logPrior ->
              incr number_of_enumerated_programs;
